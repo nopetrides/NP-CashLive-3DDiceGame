@@ -29,6 +29,7 @@ public class DieManager : MonoBehaviour
     [SerializeField]
     private DieBehaviour[] m_OpponentDice = null;
 
+    private bool m_StartingRolls = false;
     private void Start()
     {
         StartCoroutine(SetRandomRotations());
@@ -51,6 +52,10 @@ public class DieManager : MonoBehaviour
 
     public bool AllDiceStopped()
     {
+        if (m_StartingRolls)
+        {
+            return false;
+        }
         for (int i = 0; i < m_PlayerDice.Length; i++)
         {
             if (m_PlayerDice[i].IsMoving())
@@ -70,6 +75,7 @@ public class DieManager : MonoBehaviour
 
     public void PlayerRollButton()
     {
+        m_StartingRolls = true;
         StartCoroutine(OnPlayerRoll());
     }
 
@@ -80,21 +86,26 @@ public class DieManager : MonoBehaviour
             m_PlayerDice[i].Roll();
             yield return null;
         }
+        m_StartingRolls = false;
         yield return null;
     }
 
 
     public void OpponentRoll()
     {
-        OnOpponentRoll();
+        m_StartingRolls = true;
+        StartCoroutine(OnOpponentRoll());
     }
 
-    private void OnOpponentRoll()
+    IEnumerator OnOpponentRoll()
     {
         for (int i = 0; i < m_OpponentDice.Length; i++)
         {
             m_OpponentDice[i].Roll();
+            yield return null;
         }
+        m_StartingRolls = false;
+        yield return null;
     }
 
     public int[] GetPlayerScore()
@@ -107,8 +118,13 @@ public class DieManager : MonoBehaviour
         return diceNums;
     }
 
-    public void GetOpponentScore()
+    public int[] GetOpponentScore()
     {
-
+        int[] diceNums = new int[m_OpponentDice.Length];
+        for (int i = 0; i < m_OpponentDice.Length; i++)
+        {
+            diceNums[i] = m_OpponentDice[i].GetScore();
+        }
+        return diceNums;
     }
 }

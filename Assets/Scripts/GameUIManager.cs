@@ -22,31 +22,56 @@ public class GameUIManager : MonoBehaviour
 	[SerializeField]
 	private Text m_PlayerScore = null;
 	[SerializeField]
+	private Text m_PlayerRerolls = null;
+	[SerializeField]
 	private Text m_OpponentHeader = null;
 	[SerializeField]
 	private Text m_OpponentScore = null;
+	[SerializeField]
+	private Text m_OpponentRerolls = null;
+
+	[Header("Reroll")]
+	[SerializeField]
+	private GameObject m_RerollParent = null;
+	[SerializeField]
+	private Text m_PlayerScoreThisRound = null;
+	[SerializeField]
+	private Text m_OpponentScoreThisRound = null;
+	[SerializeField]
+	private Button m_PlayerReroll = null;
+	[SerializeField]
+	private Button m_PlayerKeep = null;
 
 
 	public delegate void OnRollDelegate();
 	public static OnRollDelegate RollRequested;
 	public delegate void OnTakeOverDelegate();
-	public static OnRollDelegate TakeOverRequested;
+	public static OnTakeOverDelegate TakeOverRequested;
+	public delegate void OnRerollDelegate(bool isReroll);
+	public static OnRerollDelegate RerollDecision;
 
 	private void OnEnable()
 	{
 		m_RollButton.onClick.AddListener(OnRollButtonClicked);
 		m_TakeOverButton.onClick.AddListener(OnTakeOverButtonClicked);
+		m_PlayerReroll.onClick.AddListener(OnRerollClicked);
+		m_PlayerKeep.onClick.AddListener(OnKeepClicked);
 	}
+
 	private void OnDisable()
 	{
 		m_RollButton.onClick.RemoveAllListeners();
 		m_TakeOverButton.onClick.RemoveAllListeners();
+		m_PlayerReroll.onClick.RemoveAllListeners();
+		m_PlayerKeep.onClick.RemoveAllListeners();
 	}
 
 	private void Start()
 	{
 		m_PlayerScore.text = "0";
 		m_OpponentScore.text = "0";
+		m_PlayerRerolls.text = "0";
+		m_OpponentRerolls.text = "0";
 	}
 
 	public void GameOverUI()
@@ -56,8 +81,10 @@ public class GameUIManager : MonoBehaviour
 
 	public void RandomizingUI()
 	{
+		m_RerollParent.SetActive(false);
 		m_OverlayBG.SetActive(true);
 		m_RandomizingText.SetActive(true);
+		m_RollButton.interactable = false;
 		m_HideDuringStartup.gameObject.SetActive(false);
 	}
 
@@ -77,7 +104,7 @@ public class GameUIManager : MonoBehaviour
 
 	private void OnRollButtonClicked()
 	{
-		m_RollButton.enabled = false;
+		m_RollButton.interactable = false;
 		RollRequested?.Invoke();
 	}
 
@@ -95,8 +122,25 @@ public class GameUIManager : MonoBehaviour
 		m_OpponentScore.text = score.ToString();
 	}
 
-	private void ToggleMainUI(bool active)
+	public void RerollUI(int playerScore, int opponentScore)
 	{
+		m_RerollParent.SetActive(true);
+		m_PlayerScoreThisRound.text = string.Format("You rolled {0}",playerScore);
+		m_OpponentScoreThisRound.text = string.Format("Your opponent rolled {0}", opponentScore);
+	}
 
+	public void HideRerollUI()
+	{
+		m_RerollParent.SetActive(false);
+	}
+
+	private void OnRerollClicked()
+	{
+		RerollDecision?.Invoke(true);
+	}
+
+	private void OnKeepClicked()
+	{
+		RerollDecision?.Invoke(false);
 	}
 }
