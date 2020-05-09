@@ -13,6 +13,22 @@ public class RollingAI : MonoBehaviour
 	public delegate void RerollDelegate(bool reroll);
 	public RerollDelegate RerollDecided;
 
+	private int m_RerollsRemaining = 0;
+	public int GetRerolls()
+	{
+		return m_RerollsRemaining;
+	}
+
+	public void SetupRerolls(int maxRerolls)
+	{
+		m_RerollsRemaining = maxRerolls;
+	}
+
+	public void DecrementRerolls()
+	{
+		m_RerollsRemaining--;
+	}
+
 	public void DoRoll()
 	{
 		// there should never be a reason to not roll

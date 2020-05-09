@@ -14,6 +14,8 @@ public class GameUIManager : MonoBehaviour
 	[SerializeField]
 	private Button m_TakeOverButton = null;
 	[SerializeField]
+	private Text m_TakeOverEnabledText = null;
+	[SerializeField]
 	private GameObject m_HideDuringStartup = null;
 
 	[Header("Score")]
@@ -70,13 +72,40 @@ public class GameUIManager : MonoBehaviour
 	{
 		m_PlayerScore.text = "0";
 		m_OpponentScore.text = "0";
-		m_PlayerRerolls.text = "0";
-		m_OpponentRerolls.text = "0";
+	}
+
+	private void OnRerollClicked()
+	{
+		RerollDecision?.Invoke(true);
+	}
+
+	private void OnKeepClicked()
+	{
+		RerollDecision?.Invoke(false);
+	}
+
+	private void OnRollButtonClicked()
+	{
+		RollRequested?.Invoke();
+	}
+
+	public void DisablePlayerButton()
+	{
+		m_RollButton.interactable = false;
+	}
+
+	private void OnTakeOverButtonClicked()
+	{
+		TakeOverRequested?.Invoke();
 	}
 
 	public void GameOverUI()
 	{
 		m_OverlayBG.SetActive(true);
+		m_RerollParent.SetActive(false);
+		m_HideDuringStartup.gameObject.SetActive(false);
+		m_RollButton.gameObject.SetActive(false);
+		m_TakeOverButton.gameObject.SetActive(false);
 	}
 
 	public void RandomizingUI()
@@ -88,29 +117,16 @@ public class GameUIManager : MonoBehaviour
 		m_HideDuringStartup.gameObject.SetActive(false);
 	}
 
-	public void ClearAll()
-	{
-		m_OverlayBG.SetActive(false);
-		m_RandomizingText.SetActive(false);
-	}
-
-	public void PlayerInput()
+	public void RandomizedDone()
 	{
 		m_OverlayBG.SetActive(false);
 		m_RandomizingText.SetActive(false);
 		m_HideDuringStartup.gameObject.SetActive(true);
+	}
+
+	public void PlayerInput()
+	{
 		m_RollButton.interactable = true;
-	}
-
-	private void OnRollButtonClicked()
-	{
-		m_RollButton.interactable = false;
-		RollRequested?.Invoke();
-	}
-
-	private void OnTakeOverButtonClicked()
-	{
-		TakeOverRequested?.Invoke();
 	}
 
 	public void SetPlayerScoreUI(int score)
@@ -134,13 +150,18 @@ public class GameUIManager : MonoBehaviour
 		m_RerollParent.SetActive(false);
 	}
 
-	private void OnRerollClicked()
+	public void TogglePlayForMeText(bool botControlled)
 	{
-		RerollDecision?.Invoke(true);
+		m_TakeOverEnabledText.text = botControlled ? "ENABLED":"DISABLED";
+		m_TakeOverEnabledText.color = botControlled ? new Color32(254,254,254,254) : new Color32(254,117,117,254);
 	}
 
-	private void OnKeepClicked()
+	public void SetPlayerRerollsRemaining(int remain)
 	{
-		RerollDecision?.Invoke(false);
+		m_PlayerRerolls.text = remain.ToString();
+	}
+	public void SetOpponentRerollsRemaining(int remain)
+	{
+		m_OpponentRerolls.text = remain.ToString();
 	}
 }

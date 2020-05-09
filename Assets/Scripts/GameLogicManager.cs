@@ -41,8 +41,8 @@ public class GameLogicManager : MonoBehaviour
     private RollingAI m_OpponentAI = null;
     private RollingAI m_PlayerAI = null;
     private bool m_AITakeOver = false;
-    private bool m_PlayerRerollDecided = false; 
-    private bool m_OpponentRerollDecided = false;
+    private bool m_PlayerRerollDecided = false, m_OpponentRerollDecided = false; 
+    private bool m_PlayerWantsToReroll = false, m_OpponentWantsToReroll = false;
 
     private void OnEnable()
     {
@@ -50,18 +50,23 @@ public class GameLogicManager : MonoBehaviour
         GameUIManager.TakeOverRequested += BotTakeOverCallback;
         GameUIManager.RerollDecision += PlayerRerollDecision;
 
-        if (m_OpponentAI == null)
-        {
-            m_OpponentAI = new RollingAI();
-        }
-        m_OpponentAI.RollRequested += OpponentDieRollCallback;
-        m_OpponentAI.RerollDecided += OpponentRerollDecision;
         if (m_PlayerAI == null)
         {
             m_PlayerAI = new RollingAI();
         }
         m_PlayerAI.RollRequested += PlayerDieRollCallback;
         m_PlayerAI.RerollDecided += PlayerRerollDecision;
+        m_PlayerAI.SetupRerolls(m_RerollsPerPlayer);
+        m_UIManager.SetPlayerRerollsRemaining(m_PlayerAI.GetRerolls());
+
+        if (m_OpponentAI == null)
+        {
+            m_OpponentAI = new RollingAI();
+        }
+        m_OpponentAI.RollRequested += OpponentDieRollCallback;
+        m_OpponentAI.RerollDecided += OpponentRerollDecision;
+        m_OpponentAI.SetupRerolls(m_RerollsPerPlayer);
+        m_UIManager.SetOpponentRerollsRemaining(m_OpponentAI.GetRerolls());
     }
 
     private void OnDisable()
@@ -106,6 +111,9 @@ public class GameLogicManager : MonoBehaviour
             case StateOfPlay.AskReroll:
                 CheckForRerollDecision();
                 break;
+            case StateOfPlay.RerollingRound:
+                RerollsFinished();
+                break;
         }
     }
 
@@ -130,6 +138,9 @@ public class GameLogicManager : MonoBehaviour
             case StateOfPlay.AskReroll:
                 AskReroll();
                 break;
+            case StateOfPlay.RerollingRound:
+                DoRerolls();
+                break;
             case StateOfPlay.ScoreTally:
                 GameOver();
                 break;
@@ -141,6 +152,7 @@ public class GameLogicManager : MonoBehaviour
 	#region Player_Turn
 	private void WaitingForPlayerInput()
     {
+        m_UIManager.RandomizedDone();
         if (m_AITakeOver)
         {
             m_PlayerAI.DoRoll();
@@ -153,6 +165,7 @@ public class GameLogicManager : MonoBehaviour
 
     private void PlayerDieRollCallback()
     {
+        m_UIManager.DisablePlayerButton();
         SetPlayerRolling();
     }
     private void SetPlayerRolling()
@@ -209,46 +222,81 @@ public class GameLogicManager : MonoBehaviour
 	#region Reroll
 	private void AskReroll()
     {
+        AskPlayerReroll();
+        AskOpponentReroll();
+    }
+
+    private void AskPlayerReroll()
+    {
         m_PlayerRerollDecided = false;
-        m_OpponentRerollDecided = false;
         if (m_AITakeOver)
         {
             m_PlayerAI.RerollDecision();
         }
         else
         {
-            m_UIManager.RerollUI(m_PlayerScoreThisRound, m_OpponentScoreThisRound);
+            if (m_PlayerAI.GetRerolls() > 0)
+            {
+                m_UIManager.RerollUI(m_PlayerScoreThisRound, m_OpponentScoreThisRound);
+            }
+            else
+            {
+                PlayerRerollDecision(false);
+            }
         }
-        m_OpponentAI.RerollDecision();
+    }
+
+    private void AskOpponentReroll()
+    {
+        m_OpponentRerollDecided = false;
+        if (m_OpponentAI.GetRerolls() > 0)
+        {
+            m_OpponentAI.RerollDecision();
+        }
+        else
+        {
+            OpponentRerollDecision(false);
+        }
     }
 
     private void PlayerRerollDecision(bool reroll)
     {
-        if (reroll)
+        if (reroll && m_PlayerAI.GetRerolls() > 0)
         {
-
+            m_PlayerWantsToReroll = true;
         }
         else
         {
-            m_PlayerGameScore += m_PlayerScoreThisRound;
-            m_PlayerScoreThisRound = 0;
-            m_UIManager.SetPlayerScoreUI(m_PlayerGameScore);
+            m_PlayerWantsToReroll = false;
         }
         m_PlayerRerollDecided = true;
     }
+
+    private void UpdatePlayerScoreIU()
+    {
+        m_PlayerGameScore += m_PlayerScoreThisRound;
+        m_PlayerScoreThisRound = 0;
+        m_UIManager.SetPlayerScoreUI(m_PlayerGameScore);
+    }
+
     private void OpponentRerollDecision(bool reroll)
     {
-        if (reroll)
+        if (reroll && m_OpponentAI.GetRerolls() > 0)
         {
-
+            m_OpponentWantsToReroll = true;
         }
         else
         {
-            m_OpponentGameScore += m_OpponentScoreThisRound;
-            m_OpponentScoreThisRound = 0;
-            m_UIManager.SetOpponentScoreUI(m_OpponentGameScore);
+            m_OpponentWantsToReroll = false;
         }
         m_OpponentRerollDecided = true;
+    }
+
+    private void UpdateOpponentScoreIU()
+    {
+        m_OpponentGameScore += m_OpponentScoreThisRound;
+        m_OpponentScoreThisRound = 0;
+        m_UIManager.SetOpponentScoreUI(m_OpponentGameScore);
     }
 
     private void CheckForRerollDecision()
@@ -256,12 +304,51 @@ public class GameLogicManager : MonoBehaviour
         if (m_PlayerRerollDecided && m_OpponentRerollDecided)
         {
             m_UIManager.HideRerollUI();
-            TryStartNextRound();
+            if (!m_PlayerWantsToReroll && !m_OpponentWantsToReroll)
+            {
+                TryStartNextRound();
+                return;
+            }
+            SetState(StateOfPlay.RerollingRound);
         }
+    }
+
+    private void DoRerolls()
+    {
+        if (m_PlayerWantsToReroll)
+        {
+            m_PlayerAI.DecrementRerolls();
+            m_UIManager.SetPlayerRerollsRemaining(m_PlayerAI.GetRerolls());
+            RollPlayersDice();
+        }
+        if (m_OpponentWantsToReroll)
+        {
+            m_OpponentAI.DecrementRerolls();
+            m_UIManager.SetOpponentRerollsRemaining(m_OpponentAI.GetRerolls());
+            RollOpponentsDice();
+        }
+    }
+
+    private void RerollsFinished()
+    {
+        if (m_PlayerWantsToReroll)
+        {
+            SetPlayerScore();
+            m_PlayerWantsToReroll = false;
+        }
+        if (m_OpponentWantsToReroll)
+        {
+            SetOpponentScore();
+            m_OpponentWantsToReroll = false;
+        }
+
+        TryStartNextRound();
     }
 
     private void TryStartNextRound()
     {
+        UpdatePlayerScoreIU();
+        UpdateOpponentScoreIU();
         if (m_CurrentRound < m_MaxGameRounds)
         {
             m_CurrentRound++;
@@ -282,6 +369,15 @@ public class GameLogicManager : MonoBehaviour
     private void BotTakeOverCallback()
     {
         m_AITakeOver = !m_AITakeOver;
+        m_UIManager.TogglePlayForMeText(m_AITakeOver);
+        if (m_State == StateOfPlay.PlayerWaitForInput)
+        {
+            WaitingForPlayerInput();
+        }
+        else if (m_State == StateOfPlay.AskReroll)
+        {
+            AskPlayerReroll();
+        }
     }
 
     private int CalculateScore(int[] nums, bool isPlayer)
