@@ -17,6 +17,10 @@ public class GameUIManager : MonoBehaviour
 	private Text m_TakeOverEnabledText = null;
 	[SerializeField]
 	private GameObject m_HideDuringStartup = null;
+	[SerializeField]
+	private GameObject m_GameOverParent = null;
+	[SerializeField]
+	private Text m_WinLossText = null;
 
 	[Header("Score")]
 	[SerializeField]
@@ -99,13 +103,14 @@ public class GameUIManager : MonoBehaviour
 		TakeOverRequested?.Invoke();
 	}
 
-	public void GameOverUI()
+	public void GameOverUI(bool win)
 	{
 		m_OverlayBG.SetActive(true);
 		m_RerollParent.SetActive(false);
-		m_HideDuringStartup.gameObject.SetActive(false);
 		m_RollButton.gameObject.SetActive(false);
 		m_TakeOverButton.gameObject.SetActive(false);
+		m_GameOverParent.SetActive(true);
+		m_WinLossText.text = win ? "Congratulations! You Win!" : "You Lost! Please Play Again.";
 	}
 
 	public void RandomizingUI()

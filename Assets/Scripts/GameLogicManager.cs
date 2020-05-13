@@ -363,7 +363,7 @@ public class GameLogicManager : MonoBehaviour
     #endregion
     private void GameOver()
     {
-        m_UIManager.GameOverUI();
+        m_UIManager.GameOverUI(m_PlayerGameScore >= m_OpponentGameScore);
     }
 
     private void BotTakeOverCallback()
